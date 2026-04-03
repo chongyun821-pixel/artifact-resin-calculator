@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>원신 성유물 레진 계산기</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-bg: #f7f6f2;
+      --color-surface: #f9f8f5;
+      --color-surface-2: #fbfbf9;
+      --color-surface-offset: #f3f0ec;
+      --color-border: #d4d1ca;
+      --color-text: #28251d;
+      --color-text-muted: #7a7974;
+      --color-primary: #01696f;
+      --color-primary-hover: #0c4e54;
+      --color-gold: #d19900;
+      --color-danger: #964219;
+      --space-2: 0.5rem;
+      --space-3: 0.75rem;
+      --space-4: 1rem;
+      --space-6: 1.5rem;
+      --space-8: 2rem;
+      --radius-md: 0.5rem;
+      --radius-lg: 0.75rem;
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+      --font-body: 'Noto Sans KR', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg: #171614;
+      --color-surface: #1c1b19;
+      --color-surface-2: #201f1d;
+      --color-surface-offset: #1d1c1a;
+      --color-border: #393836;
+      --color-text: #cdccca;
+      --color-text-muted: #979693;
+      --color-primary: #4f98a3;
+      --color-primary-hover: #227f8b;
+      --color-gold: #e8af34;
+      --color-danger: #bb653b;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.6;
+      padding: var(--space-4);
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    header { text-align: center; padding: var(--space-8) 0; }
+    .title-row { display: inline-flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; justify-content: center; margin-bottom: var(--space-3); }
+    h1 { font-size: var(--text-xl); margin: 0; }
+    .subtitle { margin: 0 auto; max-width: 70ch; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      margin-bottom: var(--space-6);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(0,0,0,0.04);
+    }
+    .card-title { margin: 0 0 var(--space-4); font-size: var(--text-lg); }
+    .form-group { margin-bottom: var(--space-4); }
+    label { display: block; margin-bottom: var(--space-2); font-size: var(--text-sm); font-weight: 500; }
+    select, input[type="number"] {
+      width: 100%;
+      padding: var(--space-3);
+      font: inherit;
+      color: var(--color-text);
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+    }
+    select:focus, input:focus { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+    .slot-selector {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+    }
+    .slot-btn {
+      aspect-ratio: 1;
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface-2);
+      color: var(--color-text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      cursor: pointer;
+      font: inherit;
+      font-size: var(--text-sm);
+      transition: 180ms ease;
+    }
+    .slot-btn.active { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+    .slot-icon { font-size: 1.4rem; }
+    .substat-list { display: grid; gap: var(--space-4); }
+    .substat-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(120px, 0.7fr) auto;
+      gap: var(--space-3);
+      align-items: end;
+    }
+    .inline-btns { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+    .ghost-btn, .btn {
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font: inherit;
+      transition: 180ms ease;
+    }
+    .btn {
+      width: 100%;
+      padding: var(--space-4);
+      background: var(--color-primary);
+      color: white;
+      font-weight: 700;
+      border: none;
+    }
+    .btn:hover { background: var(--color-primary-hover); }
+    .ghost-btn {
+      padding: 0.85rem 1rem;
+      background: var(--color-surface-offset);
+      color: var(--color-text);
+      border: 1px solid var(--color-border);
+    }
+    .ghost-btn.small { padding: 0.7rem 0.9rem; }
+    .results { display: none; }
+    .results.show { display: block; }
+    .result-card {
+      background: var(--color-surface-2);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      margin-bottom: var(--space-4);
+      border-left: 4px solid var(--color-gold);
+    }
+    .result-label { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-2); }
+    .result-value { font-size: var(--text-xl); color: var(--color-primary); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .result-meta { margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); }
+    .assumptions {
+      background: var(--color-surface-offset);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+    }
+    .assumptions ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
+    .helper { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: 0.35rem; }
+    .loading { display: none; text-align: center; padding: var(--space-8); color: var(--color-text-muted); }
+    .loading.show { display: block; }
+    .warning {
+      margin-top: 0.5rem;
+      color: var(--color-danger);
+      font-size: var(--text-sm);
+    }
+    @media (max-width: 768px) {
+      .slot-selector { gap: var(--space-2); }
+      .slot-btn { font-size: 0.75rem; }
+      .substat-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title-row">
+        <h1>원신 성유물 레진 계산기</h1>
+      </div>
+      <p class="subtitle">가능한 강화 경우의 수를 전부 계산해 희망 부옵 선택 확률과 목표 수치 달성 확률을 부정확하게 계산합니다.</p>
+    </header>
+
+    <div class="card">
+      <h2 class="card-title">1. 성유물 슬롯 선택</h2>
+      <div class="slot-selector">
+        <button class="slot-btn" data-slot="flower" type="button"><span class="slot-icon">🌸</span><span>꽃</span></button>
+        <button class="slot-btn" data-slot="feather" type="button"><span class="slot-icon">🪶</span><span>깃털</span></button>
+        <button class="slot-btn" data-slot="sands" type="button"><span class="slot-icon">⏳</span><span>시계</span></button>
+        <button class="slot-btn" data-slot="goblet" type="button"><span class="slot-icon">🏺</span><span>성배</span></button>
+        <button class="slot-btn" data-slot="circlet" type="button"><span class="slot-icon">👑</span><span>왕관</span></button>
+      </div>
+      <div class="form-group">
+        <label for="mainstat">주옵션 선택</label>
+        <select id="mainstat" disabled>
+          <option value="">먼저 슬롯을 선택하세요</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">2. 희망 부옵션 설정</h2>
+      <div class="inline-btns" style="margin-bottom:1rem;">
+        <button class="ghost-btn small" id="add-substat" type="button">부옵 추가</button>
+        <button class="ghost-btn small" id="remove-substat" type="button">부옵 제거</button>
+      </div>
+      <div id="substat-list" class="substat-list"></div>
+      <p class="helper">희망 부옵은 1개부터 4개까지 설정할 수 있습니다.</p>
+      <div id="validation-warning" class="warning" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">3. 계산 실행</h2>
+      <button class="btn" id="calculate" type="button">계산하기</button>
+    </div>
+
+    <div class="loading" id="loading">계산 중입니다...</div>
+
+    <div class="results" id="results">
+      <div class="card">
+        <h2 class="card-title">계산 결과</h2>
+        <div class="result-card">
+          <div class="result-label">1단계: 원하는 세트·슬롯·주옵션 성유물 획득</div>
+          <div class="result-value" id="result-stage1">-</div>
+        </div>
+        <div class="result-card">
+          <div class="result-label">2단계: 희망 부옵이 포함된 성유물 획득</div>
+          <div class="result-value" id="result-stage2">-</div>
+          <div class="result-meta" id="result-stage2-prob">희망 부옵으로 선택될 확률: -</div>
+        </div>
+        <div class="result-card">
+          <div class="result-label">3단계: 희망 수치 이상으로 강화된 성유물 획득</div>
+          <div class="result-value" id="result-stage3">-</div>
+          <div class="result-meta" id="result-stage3-prob">희망 수치까지 강화될 확률: -</div>
+        </div>
+        <div class="assumptions">
+          <strong>기본 가정</strong>
+          <ul>
+            <li>원하는 세트 확률 50%, 슬롯 확률 20%</li>
+            <li>비경 1회당 레진 20, 평균 5성 성유물 1.065개</li>
+            <li>4줄 시작 20%, 3줄 시작 80%</li>
+            <li>부옵 강화값은 최대롤 × (0.7 / 0.8 / 0.9 / 1.0) 균등</li>
+            <li>부옵은 주옵과 중복 불가, 등장 확률은 가중치 기반</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MAIN_STATS = {
+      flower: { mainstats: ['HP'], odds: [1.0] },
+      feather: { mainstats: ['ATK'], odds: [1.0] },
+      goblet: { mainstats: ['HP%', 'ATK%', 'DEF%', 'ElementalDMGBonus%', 'ElementalMastery'], odds: [0.2125, 0.2125, 0.2, 0.5, 0.25] },
+      sands: { mainstats: ['HP%', 'ATK%', 'DEF%', 'EnergyRecharge%', 'ElementalMastery'], odds: [0.2666, 0.2666, 0.2666, 0.1, 0.1] },
+      circlet: { mainstats: ['HP%', 'ATK%', 'DEF%', 'CritRate%', 'CritDMG%', 'HealingBonus', 'ElementalMastery'], odds: [0.22, 0.22, 0.22, 0.1, 0.1, 0.1, 0.04] }
+    };
+
+    const SUBSTATS = [
+      { name: 'HP', maximum_roll: 298.75, weight: 6 },
+      { name: 'ATK', maximum_roll: 19.45, weight: 6 },
+      { name: 'DEF', maximum_roll: 23.15, weight: 6 },
+      { name: 'HP%', maximum_roll: 5.83, weight: 4 },
+      { name: 'ATK%', maximum_roll: 5.83, weight: 4 },
+      { name: 'DEF%', maximum_roll: 7.29, weight: 4 },
+      { name: 'EnergyRecharge%', maximum_roll: 6.48, weight: 4 },
+      { name: 'ElementalMastery', maximum_roll: 23.31, weight: 4 },
+      { name: 'CritRate%', maximum_roll: 3.89, weight: 3 },
+      { name: 'CritDMG%', maximum_roll: 7.77, weight: 3 }
+    ];
+
+    const KOREAN_NAMES = {
+      HP: '생명력', ATK: '공격력', DEF: '방어력', 'HP%': '생명력%', 'ATK%': '공격력%', 'DEF%': '방어력%',
+      'EnergyRecharge%': '원소충전효율', 'ElementalMastery': '원소마스터리', 'CritRate%': '치명타 확률',
+      'CritDMG%': '치명타 피해', 'ElementalDMGBonus%': '원소피해보너스', HealingBonus: '치유 보너스'
+    };
+
+    const RESIN_PER_RUN = 20;
+    const AVG_5STAR_PER_RUN = 1.065;
+    const SET_PROBABILITY = 0.5;
+    const SLOT_PROBABILITY = 0.2;
+    const FOUR_LINE_PROB = 0.2;
+    const ROLL_MULTIPLIERS = [0.7, 0.8, 0.9, 1.0];
+
+    let selectedSlot = null;
+    const substatList = document.getElementById('substat-list');
+
+    function formatPercent(v) {
+      return (v * 100).toFixed(v * 100 < 1 ? 6 : 4) + '%';
+    }
+
+    function formatResin(v) {
+      if (!Number.isFinite(v)) return '계산 불가';
+      if (v > 1e18) return '100경 레진 이상';
+      return Math.round(v).toLocaleString('ko-KR') + ' 레진';
+    }
+
+    function weightedPermutations(items, pickCount) {
+      const results = [];
+      function dfs(remaining, chosen, prob) {
+        if (chosen.length === pickCount) {
+          results.push({ chosen: [...chosen], prob });
+          return;
+        }
+        const totalWeight = remaining.reduce((sum, item) => sum + item.weight, 0);
+        for (let i = 0; i < remaining.length; i++) {
+          const item = remaining[i];
+          const nextRemaining = remaining.slice(0, i).concat(remaining.slice(i + 1));
+          dfs(nextRemaining, chosen.concat(item), prob * (item.weight / totalWeight));
+        }
+      }
+      dfs(items, [], 1);
+      return results;
+    }
+
+    const factMemo = { 0: 1, 1: 1 };
+    function factorial(n) {
+      if (factMemo[n] !== undefined) return factMemo[n];
+      return factMemo[n] = n * factorial(n - 1);
+    }
+
+    function multinomialCoefficient(counts) {
+      const total = counts.reduce((a, b) => a + b, 0);
+      let res = factorial(total);
+      for (const c of counts) res /= factorial(c);
+      return res;
+    }
+
+    function generateCountVectors(parts, total) {
+      const results = [];
+      function dfs(index, remaining, current) {
+        if (index === parts - 1) {
+          results.push([...current, remaining]);
+          return;
+        }
+        for (let i = 0; i <= remaining; i++) {
+          current.push(i);
+          dfs(index + 1, remaining - i, current);
+          current.pop();
+        }
+      }
+      dfs(0, total, []);
+      return results;
+    }
+
+    const upgradeDistCache = new Map();
+    function getUpgradeDistribution(numRolls) {
+      if (upgradeDistCache.has(numRolls)) return upgradeDistCache.get(numRolls);
+      const dist = new Map();
+      const tiers = [7, 8, 9, 10];
+      function dfs(depth, sum) {
+        if (depth === numRolls) {
+          dist.set(sum, (dist.get(sum) || 0) + 1);
+          return;
+        }
+        for (const t of tiers) dfs(depth + 1, sum + t);
+      }
+      dfs(0, 0);
+      const result = { dist, totalCases: Math.pow(4, numRolls) };
+      upgradeDistCache.set(numRolls, result);
+      return result;
+    }
+
+    function getTargetDefs(mainstat) {
+      const rows = [...substatList.querySelectorAll('.substat-row')];
+      const picked = rows.map(row => ({
+        name: row.querySelector('.substat-select').value,
+        target: parseFloat(row.querySelector('.substat-target').value)
+      })).filter(v => v.name);
+      if (picked.length < 1 || picked.length > 4) throw new Error('희망 부옵은 1개 이상 4개 이하로 설정해주세요.');
+      const names = picked.map(v => v.name);
+      if (new Set(names).size !== names.length) throw new Error('희망 부옵은 중복 없이 선택해야 합니다.');
+      if (names.includes(mainstat)) throw new Error('주옵과 같은 옵션은 희망 부옵으로 선택할 수 없습니다.');
+      if (picked.some(v => Number.isNaN(v.target) || v.target <= 0)) throw new Error('모든 희망 부옵의 목표 수치를 입력해주세요.');
+      return picked;
+    }
+
+    function createSubstatRow(index) {
+      const row = document.createElement('div');
+      row.className = 'substat-row';
+      row.innerHTML = `
+        <div>
+          <label for="substat-${index}">부옵션 ${index + 1}</label>
+          <select id="substat-${index}" class="substat-select">
+            <option value="">선택</option>
+            ${SUBSTATS.map(s => `<option value="${s.name}">${KOREAN_NAMES[s.name] || s.name}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label for="substat-target-${index}">목표 수치</label>
+          <input id="substat-target-${index}" class="substat-target" type="number" min="0" step="0.1" placeholder="예: 14.0">
+        </div>
+        <div>
+          <button type="button" class="ghost-btn small row-remove">삭제</button>
+        </div>
+      `;
+      row.querySelector('.row-remove').addEventListener('click', () => {
+        if (substatList.children.length > 1) row.remove();
+        reindexSubstats();
+      });
+      return row;
+    }
+
+    function reindexSubstats() {
+      [...substatList.children].forEach((row, i) => {
+        row.querySelectorAll('label')[0].textContent = `부옵션 ${i + 1}`;
+        row.querySelector('.substat-select').id = `substat-${i}`;
+        row.querySelectorAll('label')[0].setAttribute('for', `substat-${i}`);
+        row.querySelector('.substat-target').id = `substat-target-${i}`;
+        row.querySelectorAll('label')[1].setAttribute('for', `substat-target-${i}`);
+        const removeBtn = row.querySelector('.row-remove');
+        removeBtn.disabled = substatList.children.length === 1;
+        removeBtn.style.opacity = substatList.children.length === 1 ? '0.45' : '1';
+      });
+    }
+
+    function initSubstats() {
+      substatList.innerHTML = '';
+      substatList.appendChild(createSubstatRow(0));
+      substatList.appendChild(createSubstatRow(1));
+      reindexSubstats();
+    }
+
+    document.getElementById('add-substat').addEventListener('click', () => {
+      if (substatList.children.length >= 4) return;
+      substatList.appendChild(createSubstatRow(substatList.children.length));
+      reindexSubstats();
+    });
+
+    document.getElementById('remove-substat').addEventListener('click', () => {
+      if (substatList.children.length <= 1) return;
+      substatList.lastElementChild.remove();
+      reindexSubstats();
+    });
+
+    document.querySelectorAll('.slot-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedSlot = btn.dataset.slot;
+        updateMainstatOptions();
+      });
+    });
+
+    function updateMainstatOptions() {
+      const mainstatSelect = document.getElementById('mainstat');
+      mainstatSelect.disabled = false;
+      mainstatSelect.innerHTML = '<option value="">주옵션을 선택하세요</option>';
+      const slotData = MAIN_STATS[selectedSlot];
+      slotData.mainstats.forEach((stat, index) => {
+        const option = document.createElement('option');
+        option.value = stat;
+        option.textContent = KOREAN_NAMES[stat] || stat;
+        option.dataset.probability = slotData.odds[index];
+        mainstatSelect.appendChild(option);
+      });
+    }
+
+
+    function getMaxPossibleValue(statName, isFourLineStart) {
+      const stat = SUBSTATS.find(s => s.name === statName);
+      if (!stat) return 0;
+      const baseRollCount = isFourLineStart ? 6 : 6;
+      return stat.maximum_roll * baseRollCount;
+    }
+
+    function validateTargetFeasibility(targetDefs) {
+      const impossible = [];
+      for (const target of targetDefs) {
+        const maxPossible = getMaxPossibleValue(target.name, true);
+        if (target.target > maxPossible + 1e-9) {
+          impossible.push(`${KOREAN_NAMES[target.name] || target.name} 목표치 ${target.target}는 최대 가능치 ${maxPossible.toFixed(2)}를 초과합니다.`);
+        }
+      }
+      return impossible;
+    }
+
+    function calculateStage2Probability(perms4, targetNames) {
+      let totalProb = 0;
+      for (const item of perms4) {
+        const names = item.chosen.map(v => v.name);
+        if (targetNames.every(name => names.includes(name))) totalProb += item.prob;
+      }
+      return totalProb;
+    }
+
+    function calculateUpgradeProbability(targetStats, upgradeCount, remainingTargetMap) {
+      const countVectors = generateCountVectors(4, upgradeCount);
+      let totalSuccessProb = 0;
+
+      for (const counts of countVectors) {
+        const assignProb = multinomialCoefficient(counts) / Math.pow(4, upgradeCount);
+        let jointProb = 1;
+
+        for (let i = 0; i < targetStats.length; i++) {
+          const stat = targetStats[i];
+          const remaining = remainingTargetMap[stat.name];
+          if (remaining <= 0) continue;
+
+          const rolls = counts[i];
+          if (rolls === 0) { jointProb = 0; break; }
+
+          const { dist, totalCases } = getUpgradeDistribution(rolls);
+          let okCount = 0;
+          for (const [sum, occurrences] of dist.entries()) {
+            if ((sum * stat.maximum_roll / 10) + 1e-9 >= remaining) okCount += occurrences;
+          }
+          jointProb *= (okCount / totalCases);
+          if (jointProb === 0) break;
+        }
+        totalSuccessProb += assignProb * jointProb;
+      }
+      return totalSuccessProb;
+    }
+
+    function calculateStage3Probability(targetDefs) {
+      const targetStats = targetDefs.map(t => ({
+        ...t,
+        maximum_roll: SUBSTATS.find(s => s.name === t.name).maximum_roll
+      }));
+      const targetMap = Object.fromEntries(targetDefs.map(t => [t.name, t.target]));
+      const tierOptions = [0.7, 0.8, 0.9, 1.0];
+      let totalWeightedProb = 0;
+
+      // 타겟 부옵션들의 초깃값 조합 생성 (DFS)
+      const numTargets = targetStats.length;
+      const totalInitialCases = Math.pow(4, numTargets);
+
+      function iterateInitial(idx, currentInitialValues) {
+        if (idx === numTargets) {
+          const remainingTargetMap = {};
+          for (const t of targetStats) {
+            remainingTargetMap[t.name] = Math.max(0, t.target - currentInitialValues[t.name]);
+          }
+
+          // 3줄 시작: 4번의 추가 강화 기회
+          const p3 = calculateUpgradeProbability(targetStats, 4, remainingTargetMap);
+          // 4줄 시작: 5번의 추가 강화 기회
+          const p4 = calculateUpgradeProbability(targetStats, 5, remainingTargetMap);
+          
+          totalWeightedProb += (1 - FOUR_LINE_PROB) * p3 + FOUR_LINE_PROB * p4;
+          return;
+        }
+
+        const stat = targetStats[idx];
+        for (const tier of tierOptions) {
+          currentInitialValues[stat.name] = tier * stat.maximum_roll;
+          iterateInitial(idx + 1, currentInitialValues);
+        }
+      }
+
+      iterateInitial(0, {});
+      return totalWeightedProb / totalInitialCases;
+    }
+
+    function runCalculation(mainstat, targetDefs) {
+      const slotData = MAIN_STATS[selectedSlot];
+      const mainstatIndex = slotData.mainstats.indexOf(mainstat);
+      const mainstatProb = slotData.odds[mainstatIndex];
+      const stage1Prob = SET_PROBABILITY * SLOT_PROBABILITY * mainstatProb;
+      
+      const RESIN_PER_5STAR = RESIN_PER_RUN / AVG_5STAR_PER_RUN;
+      const stage1Resin = (1 / stage1Prob) * RESIN_PER_5STAR;
+
+      const availableSubstats = SUBSTATS.filter(s => s.name !== mainstat);
+      const targetNames = targetDefs.map(t => t.name);
+      const perms4 = weightedPermutations(availableSubstats, 4);
+
+      const stage2ConditionalProb = calculateStage2Probability(perms4, targetNames);
+      const stage2TotalProb = stage1Prob * stage2ConditionalProb;
+      const stage2Resin = stage2ConditionalProb > 0 ? (1 / stage2TotalProb) * RESIN_PER_5STAR : Infinity;
+
+      const stage3EnhanceProb = stage2ConditionalProb > 0 ? calculateStage3Probability(targetDefs) : 0;
+      const stage3TotalProb = stage2TotalProb * stage3EnhanceProb;
+      const stage3Resin = stage3TotalProb > 0 ? (1 / stage3TotalProb) * RESIN_PER_5STAR : Infinity;
+
+      return { 
+        stage1Resin, 
+        stage2Resin, 
+        stage3Resin, 
+        stage2ConditionalProb, 
+        stage3ConditionalProb: stage3EnhanceProb 
+      };
+    }
+
+    function displayResults(results) {
+      document.getElementById('result-stage1').textContent = formatResin(results.stage1Resin);
+      document.getElementById('result-stage2').textContent = formatResin(results.stage2Resin);
+      document.getElementById('result-stage3').textContent = formatResin(results.stage3Resin);
+      document.getElementById('result-stage2-prob').textContent = `희망 부옵으로 선택될 확률: ${formatPercent(results.stage2ConditionalProb)}`;
+      document.getElementById('result-stage3-prob').textContent = `희망 수치까지 강화될 확률: ${formatPercent(results.stage3ConditionalProb)}`;
+      document.getElementById('results').classList.add('show');
+    }
+
+    document.getElementById('calculate').addEventListener('click', () => {
+      try {
+        if (!selectedSlot) throw new Error('슬롯을 선택해주세요.');
+        const mainstat = document.getElementById('mainstat').value;
+        if (!mainstat) throw new Error('주옵션을 선택해주세요.');
+        const targetDefs = getTargetDefs(mainstat);
+        const impossibleMessages = validateTargetFeasibility(targetDefs);
+        const warningBox = document.getElementById('validation-warning');
+        if (impossibleMessages.length > 0) {
+          warningBox.style.display = 'block';
+          warningBox.innerHTML = impossibleMessages.join('<br>');
+          throw new Error('달성 불가능한 목표 수치가 포함되어 있습니다.');
+        } else {
+          warningBox.style.display = 'none';
+          warningBox.textContent = '';
+        }
+        document.getElementById('loading').classList.add('show');
+        document.getElementById('results').classList.remove('show');
+        setTimeout(() => {
+          try {
+            const results = runCalculation(mainstat, targetDefs);
+            displayResults(results);
+          } catch (err) {
+            alert(err.message || '계산 중 오류가 발생했습니다.');
+          } finally {
+            document.getElementById('loading').classList.remove('show');
+          }
+        }, 30);
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    initSubstats();
+    (function() {
+      const root = document.documentElement;
+      root.setAttribute('data-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    })();
+  </script>
+</body>
+</html>
