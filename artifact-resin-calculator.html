@@ -207,7 +207,10 @@
         <button class="ghost-btn small" id="remove-substat" type="button">부옵 제거</button>
       </div>
       <div id="substat-list" class="substat-list"></div>
-      <p class="helper">희망 부옵은 1개부터 4개까지 설정할 수 있습니다.</p>
+      <div class="helper" style="margin-top: 1rem;">
+        <p style="margin: 0;">• 희망 부옵은 1개부터 4개까지 설정할 수 있습니다.</p>
+        <p style="margin: 0.25rem 0 0;">• 입력창 아래 붉은 입력값을 반올림값으로 간주하며, 결과값의 유효 숫자는 입력 데이터의 소수점 자릿수를 따릅니다.</p>
+      </div>
       <div id="validation-warning" class="warning" style="display:none;"></div>
     </div>
 
@@ -272,7 +275,7 @@
     ];
 
     const KOREAN_NAMES = {
-      HP: '생명력', ATK: '공격력', DEF: '방어력', 'HP%': '생명력%', 'ATK%': '공격력%', 'DEF%': '방어력%',
+      HP: '체력', ATK: '공격력', DEF: '방어력', 'HP%': '체력%', 'ATK%': '공격력%', 'DEF%': '방어력%',
       'EnergyRecharge%': '원소충전효율', 'ElementalMastery': '원소마스터리', 'CritRate%': '치명타 확률',
       'CritDMG%': '치명타 피해', 'ElementalDMGBonus%': '원소피해보너스', HealingBonus: '치유 보너스'
     };
@@ -313,6 +316,12 @@
       }
       dfs(items, [], 1);
       return results;
+    }
+
+    function getDecimalPlaces(n) {
+      const s = n.toString();
+      if (!s.includes('.')) return 0;
+      return s.split('.')[1].length;
     }
 
     const factMemo = { 0: 1, 1: 1 };
@@ -486,7 +495,7 @@
       return totalProb;
     }
 
-    function calculateUpgradeProbability(targetStats, upgradeCount, remainingTargetMap) {
+    function calculateUpgradeProbability(targetStats, upgradeCount, initialValueMap, targetMap) {
       const countVectors = generateCountVectors(4, upgradeCount);
       let totalSuccessProb = 0;
 
@@ -496,16 +505,28 @@
 
         for (let i = 0; i < targetStats.length; i++) {
           const stat = targetStats[i];
-          const remaining = remainingTargetMap[stat.name];
-          if (remaining <= 0) continue;
-
+          const target = targetMap[stat.name];
+          const initial = initialValueMap[stat.name];
           const rolls = counts[i];
-          if (rolls === 0) { jointProb = 0; break; }
+
+          const isFlat = ['HP', 'ATK', 'DEF'].includes(stat.name);
+          const standardDecimals = isFlat ? 0 : 1;
+          const inputDecimals = getDecimalPlaces(target);
+          const useRounding = inputDecimals <= standardDecimals;
+
+          if (rolls === 0) {
+            let currentVal = initial;
+            if (useRounding) currentVal = Number(currentVal.toFixed(standardDecimals));
+            if (currentVal + 1e-9 < target) { jointProb = 0; break; }
+            continue;
+          }
 
           const { dist, totalCases } = getUpgradeDistribution(rolls);
           let okCount = 0;
           for (const [sum, occurrences] of dist.entries()) {
-            if ((sum * stat.maximum_roll / 10) + 1e-9 >= remaining) okCount += occurrences;
+            let totalVal = initial + (sum * stat.maximum_roll / 10);
+            if (useRounding) totalVal = Number(totalVal.toFixed(standardDecimals));
+            if (totalVal + 1e-9 >= target) okCount += occurrences;
           }
           jointProb *= (okCount / totalCases);
           if (jointProb === 0) break;
@@ -530,15 +551,10 @@
 
       function iterateInitial(idx, currentInitialValues) {
         if (idx === numTargets) {
-          const remainingTargetMap = {};
-          for (const t of targetStats) {
-            remainingTargetMap[t.name] = Math.max(0, t.target - currentInitialValues[t.name]);
-          }
-
           // 3줄 시작: 4번의 추가 강화 기회
-          const p3 = calculateUpgradeProbability(targetStats, 4, remainingTargetMap);
+          const p3 = calculateUpgradeProbability(targetStats, 4, currentInitialValues, targetMap);
           // 4줄 시작: 5번의 추가 강화 기회
-          const p4 = calculateUpgradeProbability(targetStats, 5, remainingTargetMap);
+          const p4 = calculateUpgradeProbability(targetStats, 5, currentInitialValues, targetMap);
           
           totalWeightedProb += (1 - FOUR_LINE_PROB) * p3 + FOUR_LINE_PROB * p4;
           return;
@@ -558,7 +574,13 @@
     function runCalculation(mainstat, targetDefs) {
       const slotData = MAIN_STATS[selectedSlot];
       const mainstatIndex = slotData.mainstats.indexOf(mainstat);
-      const mainstatProb = slotData.odds[mainstatIndex];
+      let mainstatProb = slotData.odds[mainstatIndex];
+
+      // 원소피해보너스는 실제로는 8종 중 하나를 노리는 것이므로 확률을 1/8로 보정
+      if (mainstat === 'ElementalDMGBonus%') {
+        mainstatProb /= 8;
+      }
+
       const stage1Prob = SET_PROBABILITY * SLOT_PROBABILITY * mainstatProb;
       
       const RESIN_PER_5STAR = RESIN_PER_RUN / AVG_5STAR_PER_RUN;
