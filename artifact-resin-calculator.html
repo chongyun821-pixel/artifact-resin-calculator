@@ -209,7 +209,7 @@
       <div id="substat-list" class="substat-list"></div>
       <div class="helper" style="margin-top: 1rem;">
         <p style="margin: 0;">• 희망 부옵은 1개부터 4개까지 설정할 수 있습니다.</p>
-        <p style="margin: 0.25rem 0 0;">• 입력창 아래 붉은 입력값을 반올림값으로 간주하며, 결과값의 유효 숫자는 입력 데이터의 소수점 자릿수를 따릅니다.</p>
+        <p id="rounding-info" style="margin: 0.25rem 0 0; display: none;">입력값을 반올림값으로 간주하며, 결과값의 유효 숫자는 입력 데이터의 소수점 자릿수를 따릅니다.</p>
       </div>
       <div id="validation-warning" class="warning" style="display:none;"></div>
     </div>
@@ -374,10 +374,19 @@
 
     function getTargetDefs(mainstat) {
       const rows = [...substatList.querySelectorAll('.substat-row')];
-      const picked = rows.map(row => ({
-        name: row.querySelector('.substat-select').value,
-        target: parseFloat(row.querySelector('.substat-target').value)
-      })).filter(v => v.name);
+      const picked = rows.map(row => {
+        const name = row.querySelector('.substat-select').value;
+        const targetRaw = row.querySelector('.substat-target').value;
+        const target = parseFloat(targetRaw);
+        
+        const isFlat = ['HP', 'ATK', 'DEF'].includes(name);
+        const inputDecimals = targetRaw ? getDecimalPlaces(targetRaw) : 0;
+        // 체/공/방은 소수점 1자리 미만, 나머지는 2자리 미만일 때 반올림 모드 활성
+        const useRounding = targetRaw !== "" && (isFlat ? inputDecimals < 1 : inputDecimals < 2);
+
+        return { name, target, useRounding, precision: inputDecimals };
+      }).filter(v => v.name);
+
       if (picked.length < 1 || picked.length > 4) throw new Error('희망 부옵은 1개 이상 4개 이하로 설정해주세요.');
       const names = picked.map(v => v.name);
       if (new Set(names).size !== names.length) throw new Error('희망 부옵은 중복 없이 선택해야 합니다.');
@@ -509,14 +518,11 @@
           const initial = initialValueMap[stat.name];
           const rolls = counts[i];
 
-          const isFlat = ['HP', 'ATK', 'DEF'].includes(stat.name);
-          const standardDecimals = isFlat ? 0 : 1;
-          const inputDecimals = getDecimalPlaces(target);
-          const useRounding = inputDecimals <= standardDecimals;
+          const { useRounding, precision } = stat;
 
           if (rolls === 0) {
             let currentVal = initial;
-            if (useRounding) currentVal = Number(currentVal.toFixed(standardDecimals));
+            if (useRounding) currentVal = Number(currentVal.toFixed(precision));
             if (currentVal + 1e-9 < target) { jointProb = 0; break; }
             continue;
           }
@@ -525,7 +531,7 @@
           let okCount = 0;
           for (const [sum, occurrences] of dist.entries()) {
             let totalVal = initial + (sum * stat.maximum_roll / 10);
-            if (useRounding) totalVal = Number(totalVal.toFixed(standardDecimals));
+            if (useRounding) totalVal = Number(totalVal.toFixed(precision));
             if (totalVal + 1e-9 >= target) okCount += occurrences;
           }
           jointProb *= (okCount / totalCases);
@@ -648,6 +654,27 @@
         alert(err.message);
       }
     });
+
+    function updateRoundingWarningUI() {
+      const rows = [...substatList.querySelectorAll('.substat-row')];
+      const anyRounding = rows.some(row => {
+        const name = row.querySelector('.substat-select').value;
+        const targetRaw = row.querySelector('.substat-target').value;
+        if (!name || targetRaw === "") return false;
+        
+        const isFlat = ['HP', 'ATK', 'DEF'].includes(name);
+        const inputDecimals = getDecimalPlaces(targetRaw);
+        return isFlat ? inputDecimals < 1 : inputDecimals < 2;
+      });
+      
+      const info = document.getElementById('rounding-info');
+      if (info) info.style.display = anyRounding ? 'block' : 'none';
+    }
+
+    substatList.addEventListener('input', updateRoundingWarningUI);
+    substatList.addEventListener('change', updateRoundingWarningUI);
+    document.getElementById('add-substat').addEventListener('click', updateRoundingWarningUI);
+    document.getElementById('remove-substat').addEventListener('click', updateRoundingWarningUI);
 
     initSubstats();
     (function() {
